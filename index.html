@@ -182,9 +182,14 @@ button { font: inherit; color: inherit; }
   .app { display: block; height: auto; position: relative; }
   .stage { height: 62svh; min-height: 320px; }
   .app.no-info .stage { height: 100svh; }
-  .toolbar { left: 0; right: 0; bottom: 12px; padding: 0 12px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  /* Barra rolável de lado. pointer-events precisa voltar a "auto": no Safari do iPhone, um elemento com "none" não rola. */
+  .toolbar { left: 0; right: 0; bottom: 12px; padding: 2px 12px; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; pointer-events: auto; touch-action: pan-x; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding: 0 12px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .toolbar::-webkit-scrollbar { display: none; }
-  .tool { flex: none; }
+  .tool { flex: none; scroll-snap-align: start; }
+  /* Esmaece a borda onde ainda há botões escondidos, para mostrar que dá para rolar */
+  .toolbar.more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); }
+  .toolbar.more-left { -webkit-mask-image: linear-gradient(to right, transparent, #000 44px); mask-image: linear-gradient(to right, transparent, #000 44px); }
+  .toolbar.more-left.more-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent); }
   .titleblock { top: 12px; left: 12px; }
   .panel { border-left: 0; border-top: 1px solid var(--rule); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .index { position: fixed; width: min(300px, 86vw); padding-top: calc(18px + env(safe-area-inset-top, 0px)); }
@@ -1568,6 +1573,18 @@ btn("t-explode").addEventListener("click", (e) => {
 btn("t-xray").addEventListener("click", (e) => { xray = !xray; toggle(e.currentTarget, xray); applyLook(); });
 btn("t-rotate").addEventListener("click", (e) => { controls.autoRotate = !controls.autoRotate; toggle(e.currentTarget, controls.autoRotate); });
 btn("t-home").addEventListener("click", clearSelection);
+// No celular a barra rola de lado: marca as bordas que ainda escondem botões (o CSS esmaece essas bordas)
+const toolbarEl = document.querySelector(".toolbar");
+function toolbarEdges() {
+  const { scrollLeft: x, clientWidth: w, scrollWidth: total } = toolbarEl;
+  toolbarEl.classList.toggle("more-left", x > 4);
+  toolbarEl.classList.toggle("more-right", x + w < total - 4);
+}
+toolbarEl.addEventListener("scroll", toolbarEdges, { passive: true });
+addEventListener("resize", toolbarEdges);
+toolbarEdges();
+// Ao tocar num botão meio escondido, rola até ele aparecer inteiro
+toolbarEl.addEventListener("click", (e) => { const b = e.target.closest(".tool"); if (b && toolbarEl.scrollWidth > toolbarEl.clientWidth) b.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest", inline: "nearest" }); });
 // Abas laterais: lista de peças (esquerda) e informações (direita). No computador elas viram colunas que somem; em telas menores a lista é uma gaveta por cima do 3D.
 const appEl = document.querySelector(".app"), wide = matchMedia("(min-width: 1101px)");
 let indexOpen = wide.matches, infoOpen = true;
